@@ -28,11 +28,11 @@ func (cr *chunkReader)Read(p []byte) (n int, err error) {
 }
 
 func TestRequestLineParse(t *testing.T) {
+
 	reader := &chunkReader{
 		data: "GET / HTTP/1.1\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n",
 		numBytesPerRead: len("GET / HTTP/1.1\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n"),
 	}
-
 	r, err := RequestFromReader(reader)
 	require.NoError(t, err)
 	require.NotNil(t, r)
@@ -89,6 +89,30 @@ func TestRequestLineParse(t *testing.T) {
 	reader = &chunkReader {
 		data:"/coffee GET HTTP/2.0\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n",
 		numBytesPerRead: 6,
+	}
+	_, err = RequestFromReader(reader)
+	require.Error(t, err)
+}
+
+func TestHeaders(t *testing.T) {
+	reader := &chunkReader{
+		data: "GET / HTTP/1.1\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: len("GET / HTTP/1.1\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n"),
+	}
+	r, err := RequestFromReader(reader)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	value, _ := r.Headers.Get("host")
+	assert.Equal(t, "localhost:42069", value)
+	value, _ = r.Headers.Get("user-agent")
+	assert.Equal(t, "curl/8.19.0", value)
+	value, _ = r.Headers.Get("accept")
+	assert.Equal(t, "*/*", value)
+
+
+	reader = &chunkReader{
+		data: "GET / HTTP/1.1\r\nHost localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n",
+		numBytesPerRead: 3,
 	}
 	_, err = RequestFromReader(reader)
 	require.Error(t, err)

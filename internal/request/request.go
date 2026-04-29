@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"io"
+
+	"github.com/Agustin-del/httpfromtcp/internal/headers"
 )
 
 type Request struct {
 	RequestLine RequestLine
-	Headers     map[string]string
+	Headers     *headers.Headers
 	Body        []byte
 	state       state
 }
@@ -23,15 +25,18 @@ type state int
 
 const (
 	initialized state = iota
+	parsingHeaders
 	done
 )
 
 var lineSeparator = []byte("\r\n")
-const bufferSize = 8 
+
+const bufferSize = 8
 
 func newRequest() *Request {
 	return &Request{
 		state: initialized,
+		Headers: headers.NewHeaders(),
 	}
 }
 
@@ -108,23 +113,56 @@ func parseRequestLine(data []byte) (*RequestLine, int, error) {
 }
 
 func (r *Request) parse(data []byte) (int, error) {
-	switch r.state {
-	case initialized:
-		reqLine, consumed, err := parseRequestLine(data)
-		if err != nil {
-			return 0, err
-		}
-		if consumed == 0 {
-			return 0, nil
-		}
+	total := 0
+	for{
+		switch r.state {
+		case initialized:
+			reqLine, consumed, err := parseRequestLine(data[total:])
+			if err != nil {
+				return 0, err
+			}
+			if consumed == 0 {
+				return 0, nil
+			}
 
-		r.RequestLine = *reqLine
-		r.state = done
+			r.RequestLine = *reqLine
+			r.state = parsingHeaders
 
-		return consumed, nil
-	case done:
-		return 0, errors.New("error: trying to read data in a done state")
-	default:
-		return 0, errors.New("error: unknown state")
+			total += consumed
+
+		case parsingHeaders:
+			n, err := r.parseSingle(data[total:])
+			if err != nil {
+				return 0, err
+			}
+
+			if n == 0 {
+				return total, nil
+			}
+
+			total += n
+		case done:
+			return total, nil
+		default:
+			return 0, errors.New("error: unknown state")
+		}
 	}
+}
+
+func (r *Request) parseSingle(data []byte) (int, error) {
+	n, d, err := r.Headers.Parse(data)
+	if err != nil {
+		return 0, err
+	}
+
+	if n == 0 {
+		return 0, nil
+	}
+
+	if !d {
+		return n, nil
+	}
+
+	r.state = done
+	return n, nil
 }

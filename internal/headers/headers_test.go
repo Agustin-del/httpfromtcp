@@ -13,7 +13,8 @@ func Test(t *testing.T) {
 	n, done, err := headers.Parse(data)
 	require.NoError(t, err)
 	require.NotNil(t, headers)
-	assert.Equal(t, "localhost:42069", headers["Host"])
+	value, _ := headers.Get("hoST")
+	assert.Equal(t, "localhost:42069", value)
 	assert.Equal(t, 23, n)
 	assert.False(t, done)
 
@@ -39,4 +40,38 @@ func Test(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, len(data), n + n2 + n3)
 	assert.True(t, done)
+
+
+	headers = NewHeaders()
+	data = []byte("ConTent-Type: application/json\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	n2, done, err = headers.Parse(data[n:])
+	require.NoError(t, err)
+	assert.Equal(t, len(data), n + n2)
+	assert.True(t, done)
+
+	value,ok := headers.Get("content-type")
+	require.True(t, ok)
+	assert.Equal(t, "application/json", value)
+	headers = NewHeaders()
+	data = []byte("H©st: localhost:42069\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.Error(t, err)
+	assert.Equal(t, 0, n)
+	assert.False(t, done)
+
+	headers = NewHeaders()
+	data = []byte(": application/json\r\n\r\n")
+	n, done, err = headers.Parse(data)
+	require.Error(t, err)
+	assert.Equal(t, 0, n)
+	assert.False(t, done)
+
+
+	headers = NewHeaders()
+	data = []byte("content-type: application/json\r\ncontent-type:    text/html\r\n")
+	n, done, err = headers.Parse(data)
+	n2, done, err = headers.Parse(data[n:])
+	ct, _ := headers.Get("content-type")
+	assert.Equal(t, "application/json, text/html", ct)
 }
