@@ -77,3 +77,19 @@ func Test(t *testing.T) {
 	ct, _ := headers.Get("content-type")
 	assert.Equal(t, "application/json, text/html", ct)
 }
+
+func TestHeadersAllIn(t *testing.T) {
+	headers := NewHeaders()
+	data := []byte("Content-type: application/json\r\nHost:localhost:42069\r\n\r\n")
+	consumed, done, err := headers.ParseAllIn(data)
+	require.NoError(t, err)
+	assert.Equal(t, len(data), consumed)
+	assert.True(t, done)
+
+	headers = NewHeaders()
+	data = []byte("content-type: application/json\r\ncontent-type:    text/html\r\n")
+	consumed, done, err = headers.ParseAllIn(data)
+	consumed, done, err = headers.ParseAllIn(data[consumed:])
+	ct, _ := headers.Get("content-type")
+	assert.Equal(t, "application/json, text/html", ct)
+}
