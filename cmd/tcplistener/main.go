@@ -24,7 +24,7 @@ func main() {
 		}
 
 		fmt.Printf("connection accepted\n")
-		
+
 		request, err := request.RequestFromReader(conn)
 		if err != nil {
 			fmt.Printf("error procesando la request: %v", err)
@@ -33,10 +33,15 @@ func main() {
 		fmt.Printf(`Request line:
 - Method: %s
 - Target: %s
-- Version: %s` + "\n", request.RequestLine.Method,
-request.RequestLine.RequestTarget,
-request.RequestLine.HttpVersion)
-		
+- Version: %s
+`+"\n", request.RequestLine.Method,
+			request.RequestLine.RequestTarget,
+			request.RequestLine.HttpVersion)
+		fmt.Printf("Header: \n")
+
+		for key, value := range request.Headers.Headers {
+			fmt.Printf("- %s : %s\n", key, value)
+		}
 	}
 
 }

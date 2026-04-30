@@ -8,7 +8,7 @@ import (
 )
 
 type Headers struct {
-	headers map[string]string
+	Headers map[string]string
 }
 
 func NewHeaders() *Headers {
@@ -17,8 +17,8 @@ func NewHeaders() *Headers {
 	}
 }
 
-func (h *Headers) Get(key string) (string, bool){
-	value, ok := h.headers[strings.ToLower(key)]
+func (h *Headers) Get(key string) (string, bool) {
+	value, ok := h.Headers[strings.ToLower(key)]
 
 	return value, ok
 }
@@ -26,29 +26,31 @@ func (h *Headers) Get(key string) (string, bool){
 func (h *Headers) Set(key, value string) {
 	lowerKey := strings.ToLower(key)
 	trimValue := strings.TrimSpace(value)
-	if v, ok := h.headers[lowerKey]; ok{
-		h.headers[lowerKey] = v + fmt.Sprintf(", %s", trimValue)
+	if v, ok := h.Headers[lowerKey]; ok {
+		h.Headers[lowerKey] = fmt.Sprintf("%s, %s", v, trimValue)
 		return
-	} 
+	}
 
-	h.headers[lowerKey] = trimValue
+	h.Headers[lowerKey] = trimValue
 }
 
 var lineSeparator = []byte("\r\n")
 
-
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
+func (h Headers) Parse(data []byte) (consumed int, done bool, err error) {
 	//capaz hay que pasarlo a que parsee todos los headers porque quien lo hizo es un dolobu jaja
+
 	endLine := bytes.Index(data, lineSeparator)
 	if endLine == -1 {
 		return 0, false, nil
 	}
 
-	if endLine == 0 {
-		return len(lineSeparator), true, nil
-	}
 
 	line := data[:endLine]
+	consumed = endLine + len(lineSeparator)
+
+	if endLine == 0 {
+		return consumed, true, nil
+	}
 
 	header := bytes.SplitN(line, []byte(":"), 2)
 	if len(header) != 2 {
@@ -68,7 +70,8 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	}
 
 	h.Set(string(key), string(header[1]))
-	return len(line) + len(lineSeparator), false, nil
+
+	return consumed, false, nil 
 }
 
 func validToken(key []byte) bool {
