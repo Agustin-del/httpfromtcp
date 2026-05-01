@@ -39,9 +39,12 @@ func main() {
 			request.RequestLine.HttpVersion)
 		fmt.Printf("Header: \n")
 
-		request.Headers.Iterate(func(k,v string) {
+		request.Headers.Iterate(func(k, v string) {
 			fmt.Printf("- %s : %s\n", k, v)
 		})
+
+		fmt.Printf(`Body:
+%s`, string(request.Body))
 
 	}
 

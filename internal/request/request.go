@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"strconv"
-
 	"github.com/Agustin-del/httpfromtcp/internal/headers"
 )
 
@@ -111,12 +110,12 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 
 		if dne {
-			_, ok := r.Headers.Get("content-length")
-			if ok {
+			if _, ok := r.Headers.Get("content-length"); ok {
 				r.state = parsingBody
 			} else {
 				r.state = done
 			}
+
 			return consumed, nil
 		}
 
