@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"strconv"
 
 	"github.com/Agustin-del/httpfromtcp/internal/headers"
 )
@@ -26,6 +27,7 @@ type state int
 const (
 	initialized state = iota
 	parsingHeaders
+	parsingBody
 	done
 )
 
@@ -37,6 +39,7 @@ func newRequest() *Request {
 	return &Request{
 		state:   initialized,
 		Headers: headers.NewHeaders(),
+		Body: make([]byte, 0),
 	}
 }
 
@@ -56,6 +59,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		numBytesReaded, err := reader.Read(buffer[readToIndex:])
 		if err != nil {
 			if err == io.EOF {
+				if request.state == parsingBody {
+					return nil, errors.New("error: body not complete")	
+				}
 				request.state = done
 				break
 			}
@@ -77,7 +83,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	return request, nil
 }
-
 
 func (r *Request) parse(data []byte) (int, error) {
 	switch r.state {
@@ -106,11 +111,39 @@ func (r *Request) parse(data []byte) (int, error) {
 		}
 
 		if dne {
-			r.state = done
+			_, ok := r.Headers.Get("content-length")
+			if ok {
+				r.state = parsingBody
+			} else {
+				r.state = done
+			}
 			return consumed, nil
 		}
 
 		return consumed, nil
+
+	case parsingBody:
+		cLengthString, _ := r.Headers.Get("content-length")
+
+		cLength, err := strconv.Atoi(cLengthString)
+		if err != nil {
+			return 0, err
+		}
+
+		remaining := cLength - len(r.Body)	
+
+		if len(data) > remaining {
+			return 0, errors.New("error: body bigger than content-length")
+		}
+
+		r.Body = append(r.Body, data...)
+
+		if len(r.Body) == cLength {
+			r.state = done
+			return len(data), nil
+		}
+
+		return len(data), nil
 
 	case done:
 

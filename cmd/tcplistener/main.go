@@ -39,9 +39,10 @@ func main() {
 			request.RequestLine.HttpVersion)
 		fmt.Printf("Header: \n")
 
-		for key, value := range request.Headers.Headers {
-			fmt.Printf("- %s : %s\n", key, value)
-		}
+		request.Headers.Iterate(func(k,v string) {
+			fmt.Printf("- %s : %s\n", k, v)
+		})
+
 	}
 
 }

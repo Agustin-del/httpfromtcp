@@ -8,7 +8,7 @@ import (
 )
 
 type Headers struct {
-	Headers map[string]string
+	headers map[string]string
 }
 
 func NewHeaders() *Headers {
@@ -18,7 +18,7 @@ func NewHeaders() *Headers {
 }
 
 func (h *Headers) Get(key string) (string, bool) {
-	value, ok := h.Headers[strings.ToLower(key)]
+	value, ok := h.headers[strings.ToLower(key)]
 
 	return value, ok
 }
@@ -26,12 +26,18 @@ func (h *Headers) Get(key string) (string, bool) {
 func (h *Headers) Set(key, value string) {
 	lowerKey := strings.ToLower(key)
 	trimValue := strings.TrimSpace(value)
-	if v, ok := h.Headers[lowerKey]; ok {
-		h.Headers[lowerKey] = fmt.Sprintf("%s, %s", v, trimValue)
+	if v, ok := h.headers[lowerKey]; ok {
+		h.headers[lowerKey] = fmt.Sprintf("%s, %s", v, trimValue)
 		return
 	}
 
-	h.Headers[lowerKey] = trimValue
+	h.headers[lowerKey] = trimValue
+}
+
+func (h *Headers) Iterate(fn func (k, v string)){
+	for k, v := range h.headers {
+		fn(k, v)
+	}
 }
 
 var lineSeparator = []byte("\r\n")
