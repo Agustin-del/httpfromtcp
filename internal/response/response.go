@@ -32,7 +32,7 @@ func WriteStatusLine(w io.Writer, sc StatusCode) error {
 		return err
 	}
 
-	_, err := fmt.Fprintf(w, "HTTP/1.1 %d\r\n", sc)
+	_, err := fmt.Fprintf(w, "HTTP/1.1 %d \r\n", sc)
 	return err
 }
 
