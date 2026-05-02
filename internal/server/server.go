@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+
+	"github.com/Agustin-del/httpfromtcp/internal/response"
 )
 
 type Server struct {
@@ -43,15 +45,21 @@ func (s *Server) listen() {
 		}
 
 		go func() {
-			s.handler(conn)
+			s.handle(conn)
 		}()
 	}
 }
 
-func (s *Server) handler(conn net.Conn) {
-	_, err := conn.Write([]byte("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length:13\r\n\r\nHello world!\n"))
+func (s *Server) handle(conn net.Conn) {
+	err := response.WriteStatusLine(conn, 200)
 	if err != nil {
-		log.Printf("Write error: %v", err)
+		log.Printf("Write status line error: %v", err)
+	}
+
+	hs := response.GetDefaultHeaders(0)
+	err = response.WriteHeaders(conn, hs) 
+	if err != nil {
+		log.Printf("Write headers error: %v", err)
 	}
 	conn.Close()
 }
