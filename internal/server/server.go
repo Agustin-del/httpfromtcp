@@ -73,14 +73,11 @@ func (s *Server) handle(conn net.Conn) {
 
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
-		msg := "error reading request"
-		response.WriteStatusLine(conn, response.BAD_REQUEST)
-		hs := response.GetDefaultHeaders(len(msg))
-		response.WriteHeaders(conn, hs)
-		if _, err := conn.Write([]byte(msg)); err != nil {
-			log.Printf("error writing error body\n")
+		hErr := &HandlerError{
+			StatusCode: response.INTERNAL_SERVER_ERROR,
+			Msg: "error reading request",
 		}
-		log.Printf("error reading request: %v", err)
+		hErr.WriteError(conn)
 		return
 	}
 
@@ -92,37 +89,31 @@ func (s *Server) handle(conn net.Conn) {
 	}
 
 	if err := response.WriteStatusLine(conn, response.OK); err != nil {
-		msg := "error writing status line"
-		hs := response.GetDefaultHeaders(len(msg))
-		response.WriteStatusLine(conn, response.INTERNAL_SERVER_ERROR)
-		response.WriteHeaders(conn, hs)
-		if _, err := conn.Write([]byte(msg)); err != nil {
-			log.Printf("error writing error body\n")
+		hErr := &HandlerError{
+			StatusCode: response.INTERNAL_SERVER_ERROR,
+			Msg: "error writing status line",
 		}
-		log.Printf("Write status line error: %v", err)
+		hErr.WriteError(conn)
 		return
 	}
 
 	body := writer.Bytes()
 	hs := response.GetDefaultHeaders(len(body))
 	if err := response.WriteHeaders(conn, hs); err != nil {
-		msg := "error writing headers"
-		hs := response.GetDefaultHeaders(len(msg))
-		response.WriteStatusLine(conn, response.INTERNAL_SERVER_ERROR)
-		response.WriteHeaders(conn, hs)
-		if _, err := conn.Write([]byte(msg)); err != nil {
-			log.Printf("error writing error body\n")
+		hErr := &HandlerError{
+			StatusCode: response.INTERNAL_SERVER_ERROR,
+			Msg: "error writing headers",
 		}
-		log.Printf("Write headers error: %v", err)
+		hErr.WriteError(conn)
 		return
 	}
 
 	if _, err := conn.Write(body); err != nil {
-		msg := "error writing body"
-		hs := response.GetDefaultHeaders(len(msg))
-		response.WriteStatusLine(conn, response.INTERNAL_SERVER_ERROR)
-		response.WriteHeaders(conn, hs)
-		log.Printf("error writing body: %v", err)
+		hErr := &HandlerError{
+			StatusCode: response.INTERNAL_SERVER_ERROR,
+			Msg: "error writing body",
+		}
+		hErr.WriteError(conn)
 		return
 	}
 }
