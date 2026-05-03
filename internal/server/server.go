@@ -13,12 +13,12 @@ import (
 
 type Server struct {
 	listener net.Listener
-	handler Handler
+	handler  Handler
 }
 
 type HandlerError struct {
 	StatusCode response.StatusCode
-	Msg string
+	Msg        string
 }
 
 type Handler func(w io.Writer, req *request.Request) *HandlerError
@@ -34,21 +34,19 @@ func (hE *HandlerError) WriteError(w io.Writer) {
 }
 
 func Serve(port int, handler Handler) (*Server, error) {
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d",port))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		return nil, err
 	}
 
-	server := Server{
+	server := &Server{
 		listener: listener,
-		handler: handler,
-	}	
-	
-	go func () {
-		server.listen()
-	}()
+		handler:  handler,
+	}
 
-	return &server, nil
+	go server.listen()
+
+	return server, nil
 }
 
 func (s *Server) Close() error {
@@ -66,9 +64,7 @@ func (s *Server) listen() {
 			return
 		}
 
-		go func() {
-			s.handle(conn)
-		}()
+		go s.handle(conn)
 	}
 }
 
@@ -87,9 +83,9 @@ func (s *Server) handle(conn net.Conn) {
 		log.Printf("error reading request: %v", err)
 		return
 	}
-		
+
 	writer := bytes.NewBuffer([]byte{})
-	hE := s.handler(writer, req)	
+	hE := s.handler(writer, req)
 	if hE != nil {
 		hE.WriteError(conn)
 		return
