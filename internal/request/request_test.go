@@ -1,6 +1,7 @@
 package request
 
 import (
+	"fmt"
 	"io"
 	"testing"
 
@@ -73,7 +74,7 @@ func TestRequestLineParse(t *testing.T) {
 
 	reader = &chunkReader{
 		data:            "/coffee HTTP/1.1\r\nHost:localhost:42069\r\nUser-Agent: curl/8.19.0\r\nAccept: */*\r\n\r\n",
-		numBytesPerRead: 2,
+		numBytesPerRead: 8,
 	}
 	_, err = RequestFromReader(reader)
 	require.Error(t, err)
@@ -152,7 +153,6 @@ func TestBody(t *testing.T) {
 	r, err = RequestFromReader(reader)
 	require.NoError(t, err)
 
-
 	reader = &chunkReader{
 		data: "POST /submit HTTP/1.1\r\n" +
 			"Host: localhost:42069\r\n" +
@@ -163,4 +163,22 @@ func TestBody(t *testing.T) {
 
 	_, err = RequestFromReader(reader)
 	require.NoError(t, err)
+}
+
+func TestFail(t *testing.T) {
+	fmt.Println("hola")
+
+	reader := &chunkReader{
+		data: "GET /hola HTTP/1.1\r\n" +
+			"Host: localhost:42069\r\n" +
+			"User-Agent: curl/8.20.0\r\n" +
+			"Accept: */*\r\n\r\n",
+		numBytesPerRead: 8,
+	}
+
+	req, err := RequestFromReader(reader)
+	require.NoError(t, err)
+
+	assert.Equal(t, req.RequestLine.RequestTarget, "/hola")
+
 }

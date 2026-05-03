@@ -3,9 +3,9 @@ package request
 import (
 	"bytes"
 	"errors"
+	"github.com/Agustin-del/httpfromtcp/internal/headers"
 	"io"
 	"strconv"
-	"github.com/Agustin-del/httpfromtcp/internal/headers"
 )
 
 type Request struct {
@@ -38,7 +38,7 @@ func newRequest() *Request {
 	return &Request{
 		state:   initialized,
 		Headers: headers.NewHeaders(),
-		Body: make([]byte, 0),
+		Body:    make([]byte, 0),
 	}
 }
 
@@ -55,28 +55,34 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			buffer = newBuf
 		}
 
-		numBytesReaded, err := reader.Read(buffer[readToIndex:])
-		if err != nil {
-			if err == io.EOF {
-				if request.state == parsingBody {
-					return nil, errors.New("error: body not complete")	
-				}
-				request.state = done
-				break
+		var numBytesParsed int
+		var err error
+		if readToIndex > 0 {
+			numBytesParsed, err = request.parse(buffer[:readToIndex])
+			if err != nil {
+				return nil, err
 			}
-			return nil, err
-		}
-
-		readToIndex += numBytesReaded
-		numBytesParsed, err := request.parse(buffer[:readToIndex])
-		if err != nil {
-			return nil, err
 		}
 
 		if numBytesParsed > 0 {
-
 			copy(buffer, buffer[numBytesParsed:readToIndex])
 			readToIndex -= numBytesParsed
+			continue
+		}
+
+		if numBytesParsed == 0 {
+			numBytesReaded, err := reader.Read(buffer[readToIndex:])
+			if err != nil {
+				if err == io.EOF {
+					if request.state == parsingBody {
+						return nil, errors.New("error: body not complete")
+					}
+					request.state = done
+					break
+				}
+				return nil, err
+			}
+			readToIndex += numBytesReaded
 		}
 	}
 
@@ -129,7 +135,7 @@ func (r *Request) parse(data []byte) (int, error) {
 			return 0, err
 		}
 
-		remaining := cLength - len(r.Body)	
+		remaining := cLength - len(r.Body)
 
 		if len(data) > remaining {
 			return 0, errors.New("error: body bigger than content-length")
