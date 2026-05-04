@@ -34,6 +34,12 @@ func (h *Headers) Set(key, value string) {
 	h.headers[lowerKey] = trimValue
 }
 
+func (h *Headers) Replace(key, value string) {
+	lowerKey := strings.ToLower(key)
+	trimValue := strings.TrimSpace(value)
+	h.headers[lowerKey] = trimValue
+}
+
 func (h *Headers) Iterate(fn func (k, v string)){
 	for k, v := range h.headers {
 		fn(k, v)

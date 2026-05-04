@@ -1,9 +1,7 @@
 package server
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"log"
 	"net"
 
@@ -21,13 +19,13 @@ type HandlerError struct {
 	Msg        string
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+type Handler func(w *response.Writer, req *request.Request)
 
-func (hE *HandlerError) WriteError(w io.Writer) {
-	response.WriteStatusLine(w, hE.StatusCode)
-	hs := response.GetDefaultHeaders(len(hE.Msg))
-	response.WriteHeaders(w, hs)
-	_, err := w.Write([]byte(hE.Msg))
+func (hE *HandlerError) Write(w *response.Writer) {
+	w.WriteStatusLine(hE.StatusCode)
+	hs := response.GetDefaultHeaders(len(hE.Msg), false)
+	w.WriteHeaders(hs)
+	_, err := w.WriteBody([]byte(hE.Msg))
 	if err != nil {
 		fmt.Printf("error writing error")
 	}
@@ -70,6 +68,7 @@ func (s *Server) listen() {
 
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
+	writer := response.NewWriter(conn)
 
 	req, err := request.RequestFromReader(conn)
 	if err != nil {
@@ -77,43 +76,9 @@ func (s *Server) handle(conn net.Conn) {
 			StatusCode: response.INTERNAL_SERVER_ERROR,
 			Msg: "error reading request",
 		}
-		hErr.WriteError(conn)
+		hErr.Write(writer)
 		return
-	}
+}
 
-	writer := bytes.NewBuffer([]byte{})
-	hE := s.handler(writer, req)
-	if hE != nil {
-		hE.WriteError(conn)
-		return
-	}
-
-	if err := response.WriteStatusLine(conn, response.OK); err != nil {
-		hErr := &HandlerError{
-			StatusCode: response.INTERNAL_SERVER_ERROR,
-			Msg: "error writing status line",
-		}
-		hErr.WriteError(conn)
-		return
-	}
-
-	body := writer.Bytes()
-	hs := response.GetDefaultHeaders(len(body))
-	if err := response.WriteHeaders(conn, hs); err != nil {
-		hErr := &HandlerError{
-			StatusCode: response.INTERNAL_SERVER_ERROR,
-			Msg: "error writing headers",
-		}
-		hErr.WriteError(conn)
-		return
-	}
-
-	if _, err := conn.Write(body); err != nil {
-		hErr := &HandlerError{
-			StatusCode: response.INTERNAL_SERVER_ERROR,
-			Msg: "error writing body",
-		}
-		hErr.WriteError(conn)
-		return
-	}
+	s.handler(writer, req)
 }
