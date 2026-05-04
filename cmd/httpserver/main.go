@@ -229,6 +229,59 @@ func handler(w *response.Writer, req *request.Request) {
 
 		case "/myproblem":
 			respond500(w)
+			return
+		case "/video":
+			file, err := os.Open("assets/vim.mp4")
+			if err != nil {
+				respond500(w)
+				return
+			}
+
+			if err := w.WriteStatusLine(response.OK); err != nil {
+				hE := &server.HandlerError{
+					StatusCode: response.INTERNAL_SERVER_ERROR,
+					Msg:        "error respondiendo",
+				}
+				log.Printf("error escribiendo status line")
+				hE.Write(w)
+				return
+			}
+
+			hs := response.GetDefaultHeaders(0, true)
+			hs.Replace("content-type", "video/mp4")
+			hs.Set("trailer", "x-content-sha256, x-content-length")
+				if err := w.WriteHeaders(hs); err != nil {
+				respond500(w)
+				log.Printf("error escribiendo headers")
+				return
+			}
+
+			hash := sha256.New()
+			totalLength := 0
+			buffer := make([]byte, 1024)
+			for {
+				n, err := file.Read(buffer)
+				if err != nil {
+					if err == io.EOF {
+						break
+					}
+					respond500(w)
+					log.Printf("Problema leyendo el video: %v", err)
+					return
+				}
+
+				chunk := buffer[:n]
+				hash.Write(chunk)
+				totalLength += n
+				w.WriteChunkedBody(chunk)
+			}
+
+			hashSum := hash.Sum(nil)
+			trailers := headers.NewHeaders()
+			trailers.Set("x-content-sha256", fmt.Sprintf("%x", hashSum))
+			trailers.Set("x-content-length", fmt.Sprintf("%d", totalLength))
+			w.WriteChunkedBodyDone()
+
 		default:
 			msg := `<html>
 	<head>
